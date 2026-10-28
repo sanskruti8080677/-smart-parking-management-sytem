@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkPulse - Smart Parking Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Persistent Top Header -->
+  <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-extrabold text-lg shadow-sm">
+        🅿️
+      </div>
+      <div>
+        <span class="text-xl font-extrabold tracking-tight text-slate-900">ParkPulse</span>
+        <span class="hidden sm:inline-block ml-2 text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-full font-semibold">
+          Smart Urban Parking & QR Gate System
+        </span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- FASTag / Wallet Quick Chip -->
+      <button onclick="switchTab('Payments & Wallet')" class="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition">
+        <span>🏷️ FASTag Wallet:</span>
+        <span id="header-wallet">₹1,450</span>
+      </button>
+
+      <!-- Role Switcher (Driver vs Admin) -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <button onclick="switchRole('driver')" id="role-btn-driver" class="px-3 py-1 rounded-lg text-xs font-bold transition bg-teal-600 text-white shadow-sm">
+          🚗 Driver View
+        </button>
+        <button onclick="switchRole('admin')" id="role-btn-admin" class="px-3 py-1 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+          🛡️ Admin Console
+        </button>
+      </div>
+
+      <!-- Notification Bell -->
+      <button onclick="switchTab('Notifications')" title="Notifications" class="relative p-2.5 rounded-full hover:bg-slate-100 border border-slate-200 transition">
+        🔔
+        <span id="notif-badge" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center">
+          2
+        </span>
+      </button>
+
+      <!-- Clickable Profile Avatar -->
+      <button onclick="switchTab('My Profile')" title="Open My Profile" class="flex items-center gap-3 p-1.5 pr-3.5 rounded-full hover:bg-slate-100 transition border border-slate-200 cursor-pointer">
+        <div id="header-initials" class="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm">
+          JD
+        </div>
+        <div class="text-left hidden sm:block">
+          <p id="header-name" class="text-xs font-bold text-slate-800 leading-tight">Jayesh Deshmukh</p>
+          <p id="header-vehicle" class="text-[11px] text-teal-600 font-semibold font-mono">MH-31-CB-4829</p>
+        </div>
+      </button>
+    </div>
+  </header>
+
+  <!-- Toast Alert Popup -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium border border-slate-700"></div>
+
+  <!-- Main Layout -->
+  <div class="flex flex-1">
+    <!-- Left Sidebar -->
+    <aside class="w-64 bg-white border-r border-slate-200 p-4 hidden md:flex flex-col justify-between">
+      <nav id="sidebar-nav" class="space-y-1.5"></nav>
+
+      <div class="p-4 rounded-xl bg-teal-50 border border-teal-100 text-xs text-teal-900 space-y-2">
+        <p class="font-bold">📷 QR Gate Scanner Ready</p>
+        <p class="text-teal-700">Instant contact-free entry & exit across all smart zones.</p>
+        <button onclick="switchTab('QR Gate Scanner')" class="w-full py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition">
+          Open QR Gate Terminal →
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile Bottom Navigation -->
+    <div id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-20 flex overflow-x-auto p-2 gap-1"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-6 md:p-8 pb-20 md:pb-8 max-w-6xl mx-auto w-full">
+      <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-4">
+        <div>
+          <h1 id="page-title" class="text-2xl font-bold text-slate-900">Live Slot Map & Booking</h1>
+          <p class="text-sm text-slate-500">Real-time IoT sensor slot availability, instant reservation, QR entry/exit, and analytics.</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openTopUpModal(500)" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition">
+            💳 + Recharge FASTag
+          </button>
+          <button onclick="switchTab('My Bookings & QR')" class="px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition">
+            🎟️ Active QR Passes
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 1: LIVE SLOT MAP & BOOKING -->
+      <div id="tab-Live Slot Map" class="space-y-6">
+        <!-- Live Metrics -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Available Slots</p>
+            <p id="stat-available" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+            <p class="text-xs text-slate-500 mt-1">Ready for instant booking</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Occupied / Parked</p>
+            <p id="stat-occupied" class="text-3xl font-extrabold text-rose-600 mt-1">0</p>
+            <p class="text-xs text-slate-500 mt-1">Live sensor detection</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Your Active Passes</p>
+            <p id="stat-my-bookings" class="text-3xl font-extrabold text-teal-600 mt-1">1</p>
+            <p class="text-xs text-emerald-600 font-medium mt-1">QR Entry Ready</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">FASTag Balance</p>
+            <p id="stat-wallet" class="text-2xl font-extrabold text-slate-900 mt-1">₹1,450</p>
+            <p class="text-xs text-slate-500 mt-1">Auto-deduct enabled</p>
+          </div>
+        </div>
+
+        <!-- Zone Selector & Vehicle Filter Bar -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col sm:flex-row gap-3 flex-1">
+            <div class="flex-1">
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Select Parking Zone / Hub</label>
+              <select id="zone-select" onchange="renderSlotGrid()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-800">
+                <option value="Sitabuldi Metro Hub">📍 Zone A: Sitabuldi Metro Multilevel</option>
+                <option value="Dharampeth Plaza">📍 Zone B: Dharampeth Central Plaza</option>
+                <option value="Sadar Smart Lot">📍 Zone C: Sadar Commercial Smart Lot</option>
+              </select>
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Filter by Slot Type / Status</label>
+              <select id="type-filter" onchange="renderSlotGrid()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
+                <option value="All">All Slots</option>
+                <option value="AvailableOnly">🟢 Available Slots Only</option>
+                <option value="Car">🚗 4-Wheeler Car (₹40/hr)</option>
+                <option value="EV">⚡ EV Fast Charging (₹60/hr)</option>
+                <option value="Bike">🛵 2-Wheeler Bike (₹20/hr)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex flex-wrap gap-3 text-xs font-bold pt-2 md:pt-5">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Available</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-teal-600"></span> Your Booking</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> Occupied</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Maintenance</span>
+          </div>
+        </div>
+
+        <!-- Interactive Parking Grid -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="current-zone-heading" class="text-lg font-bold text-slate-900">Sitabuldi Metro Hub — Live Sensor Bay</h2>
+            <span class="text-xs text-slate-500">Click any green slot to reserve</span>
+          </div>
+          <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MY BOOKINGS & QR PASSES -->
+      <div id="tab-My Bookings & QR" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Your Parking Reservations & QR Gate Passes</h2>
+              <p class="text-xs text-slate-500">Present your QR code at the entry/exit barrier or test it in the QR Gate Scanner tab.</p>
+            </div>
+            <button onclick="switchTab('Live Slot Map')" class="px-3.5 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700">
+              + Book Another Slot
+            </button>
+          </div>
+          <div id="bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: QR GATE SCANNER (ENTRY / EXIT TERMINAL SIMULATOR) -->
+      <div id="tab-QR Gate Scanner" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Scanner Control Box -->
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">📷 Automated QR Entry / Exit Gate Terminal</h2>
+                <p class="text-xs text-slate-500">Select a booking pass or enter a Booking ID / PIN to simulate boom-barrier verification.</p>
+              </div>
+              <span class="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold">Laser Sensor Online</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Select Active Booking Pass</label>
+                <select id="scanner-booking-select" onchange="syncScannerSelection()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Or Enter Booking ID / Gate PIN</label>
+                <input type="text" id="scanner-manual-input" placeholder="e.g., PK-9041 or PIN" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <button onclick="processGateScan('entry')" class="py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-sm shadow-sm transition flex items-center justify-center gap-2">
+                <span>🟢 Scan QR at ENTRY Gate (Check-In)</span>
+              </button>
+              <button onclick="processGateScan('exit')" class="py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-sm shadow-sm transition flex items-center justify-center gap-2">
+                <span>🔴 Scan QR at EXIT Gate (Check-Out)</span>
+              </button>
+            </div>
+
+            <!-- Live Gate Barrier Status Screen -->
+            <div id="gate-terminal-screen" class="p-5 rounded-2xl bg-slate-900 text-white font-mono text-xs space-y-2 border border-slate-800">
+              <div class="flex justify-between text-teal-400 font-bold">
+                <span>[PARKPULSE GATE CONTROLLER v4.2]</span>
+                <span id="gate-barrier-badge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded">BARRIER: CLOSED</span>
+              </div>
+              <p id="gate-log-line1" class="text-slate-300">&gt; Waiting for vehicle QR Pass or FASTag RFID scan...</p>
+              <p id="gate-log-line2" class="text-emerald-400 font-bold"></p>
+            </div>
+          </div>
+
+          <!-- Recent Gate Access Logs -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 mb-3">Recent Gate Logs</h3>
+              <div id="gate-logs-list" class="space-y-3 text-xs"></div>
+            </div>
+            <div class="mt-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
+              💡 <strong>How it works:</strong> Entry scan marks your reserved slot as <strong>Checked-In (Occupied)</strong>. Exit scan releases the slot back to <strong>Available</strong> on the live map.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: PAYMENTS & FASTAG WALLET -->
+      <div id="tab-Payments & Wallet" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-teal-700 text-white p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center">
+                <span class="text-xs uppercase font-bold text-teal-200">ParkPulse FASTag Wallet</span>
+                <span class="text-[11px] bg-white/20 px-2.5 py-0.5 rounded-full font-semibold">Auto-Pay Active</span>
+              </div>
+              <p id="wallet-main-balance" class="text-4xl font-extrabold mt-3">₹1,450</p>
+              <p class="text-xs text-teal-100 mt-2">Linked Vehicle: <span id="wallet-vehicle" class="font-mono font-bold">MH-31-CB-4829</span></p>
+              <p class="text-xs text-teal-200 mt-1">Tag ID: FT-9920-NAGPUR-01</p>
+            </div>
+            <div class="mt-6 pt-4 border-t border-teal-600">
+              <p class="text-[11px] text-teal-200 mb-2 font-medium">Instant Recharge:</p>
+              <div class="flex gap-2">
+                <button onclick="openTopUpModal(200)" class="flex-1 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-bold transition">+ ₹200</button>
+                <button onclick="openTopUpModal(500)" class="flex-1 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-bold transition">+ ₹500</button>
+                <button onclick="openTopUpModal(1000)" class="flex-1 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-bold transition">+ ₹1,000</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-slate-900">Payment & Booking Ledger</h3>
+              <button onclick="openTopUpModal(500)" class="text-xs font-bold text-teal-600 hover:underline">+ Add Money to Wallet</button>
+            </div>
+            <div id="payment-history-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: ADMIN ANALYTICS DASHBOARD -->
+      <div id="tab-Admin Analytics" class="hidden space-y-6">
+        <!-- Admin Top KPIs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Total Revenue Collected</p>
+            <p id="admin-revenue" class="text-3xl font-extrabold text-emerald-700 mt-1">₹4,820</p>
+            <p class="text-xs text-emerald-600 font-medium mt-1">Today's digital collection</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Live Occupancy Rate</p>
+            <p id="admin-occupancy" class="text-3xl font-extrabold text-teal-600 mt-1">44%</p>
+            <p class="text-xs text-slate-500 mt-1">Across all 3 urban zones</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Total Smart Slots</p>
+            <p id="admin-total-slots" class="text-3xl font-extrabold text-slate-900 mt-1">18</p>
+            <p class="text-xs text-slate-500 mt-1">IoT Ultrasonic Sensors</p>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">EV Chargers Active</p>
+            <p id="admin-ev-count" class="text-3xl font-extrabold text-amber-600 mt-1">4</p>
+            <p class="text-xs text-slate-500 mt-1">Fast DC Charging Bays</p>
+          </div>
+        </div>
+
+        <!-- Zone Utilization Analytics & Add Slot Form -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-lg font-bold text-slate-900">Zone-Wise Space Utilization Analytics</h3>
+            <div id="admin-zone-bars" class="space-y-4 pt-2"></div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Add New Parking Slot</h3>
+            <p class="text-xs text-slate-500 mb-4">Expand capacity in any zone dynamically.</p>
+            <form onsubmit="adminAddSlot(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Slot Code</label>
+                <input type="text" id="new-slot-code" required placeholder="e.g., A-07 or B-08" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm uppercase font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Zone</label>
+                <select id="new-slot-zone" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+                  <option value="Sitabuldi Metro Hub">Sitabuldi Metro Hub</option>
+                  <option value="Dharampeth Plaza">Dharampeth Plaza</option>
+                  <option value="Sadar Smart Lot">Sadar Smart Lot</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Vehicle Type</label>
+                  <select id="new-slot-type" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+                    <option value="Car">Car (4W)</option>
+                    <option value="EV">EV Charger</option>
+                    <option value="Bike">Bike (2W)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Rate (₹/hr)</label>
+                  <input type="number" id="new-slot-rate" value="40" min="10" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold" />
+                </div>
+              </div>
+              <button type="submit" class="w-full py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition">
+                + Deploy New Sensor Slot
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Admin Live Slot Override Table -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-bold text-slate-900 mb-4">Live Sensor Slot Control & Override Console</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="border-b border-slate-200 text-xs uppercase text-slate-400">
+                  <th class="py-3 px-4">Slot ID & Zone</th>
+                  <th class="py-3 px-4">Type & Tariff</th>
+                  <th class="py-3 px-4">Current Vehicle</th>
+                  <th class="py-3 px-4">Sensor Status</th>
+                  <th class="py-3 px-4">Admin Override Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-slots-tbody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: NOTIFICATIONS -->
+      <div id="tab-Notifications" class="hidden space-y-4">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900">Real-Time Parking & Gate Alerts</h2>
+            <button onclick="markAllNotificationsRead()" class="text-xs font-bold text-teal-600 hover:underline">Mark All as Read</button>
+          </div>
+          <div id="notifications-list" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- TAB 7: MY PROFILE -->
+      <div id="tab-My Profile" class="hidden">
+        <div class="max-w-xl bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+              <div id="profile-avatar" class="w-14 h-14 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xl">
+                JD
+              </div>
+              <div>
+                <h2 id="profile-display-name" class="text-xl font-bold text-slate-900">Jayesh Deshmukh</h2>
+                <p id="profile-display-sub" class="text-xs text-teal-600 font-bold">Verified Driver • Vehicle: MH-31-CB-4829</p>
+              </div>
+            </div>
+            <button onclick="toggleProfileEdit(true)" id="edit-profile-btn" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200">
+              Edit Profile
+            </button>
+          </div>
+
+          <div id="profile-view-mode" class="space-y-3 text-sm border-t border-slate-200 pt-4">
+            <div class="flex justify-between py-1.5"><span class="text-slate-500">Driver Name:</span><span id="pv-name" class="font-semibold">Jayesh Deshmukh</span></div>
+            <div class="flex justify-between py-1.5"><span class="text-slate-500">Registered Vehicle No:</span><span id="pv-vehicle" class="font-mono font-bold text-teal-700">MH-31-CB-4829</span></div>
+            <div class="flex justify-between py-1.5"><span class="text-slate-500">Phone Number:</span><span id="pv-phone" class="font-semibold">+91 98765 43210</span></div>
+            <div class="flex justify-between py-1.5"><span class="text-slate-500">Email Address:</span><span id="pv-email" class="font-semibold">jayesh@college.edu</span></div>
+          </div>
+
+          <form id="profile-edit-mode" onsubmit="saveProfile(event)" class="hidden space-y-4 border-t border-slate-200 pt-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Full Name</label>
+              <input type="text" id="pe-name" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Primary Vehicle Plate No</label>
+              <input type="text" id="pe-vehicle" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono uppercase" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Phone Number</label>
+              <input type="text" id="pe-phone" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email Address</label>
+              <input type="email" id="pe-email" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="px-5 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-semibold hover:bg-teal-700">Save Changes</button>
+              <button type="button" onclick="toggleProfileEdit(false)" class="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL 1: BOOK SLOT & INTEGRATED PAYMENT GATEWAY -->
+  <div id="booking-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div>
+          <h3 id="bm-title" class="text-lg font-bold text-slate-900">Reserve Parking Slot</h3>
+          <p id="bm-subtitle" class="text-xs text-slate-500"></p>
+        </div>
+        <button onclick="closeBookingModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+      </div>
+
+      <form onsubmit="confirmSlotBooking(event)" class="space-y-4 mt-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Vehicle Plate No</label>
+            <input type="text" id="bm-vehicle" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono uppercase font-bold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Duration (Hours)</label>
+            <select id="bm-duration" onchange="updateBookingPricePreview()" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold">
+              <option value="1">1 Hour</option>
+              <option value="2" selected>2 Hours</option>
+              <option value="4">4 Hours</option>
+              <option value="8">8 Hours (Full Day)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Select Payment Mode</label>
+          <select id="bm-pay-mode" onchange="toggleBookingPayFields()" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold">
+            <option value="FASTag Wallet">🏷️ ParkPulse FASTag Wallet (Instant Auto-Debit)</option>
+            <option value="UPI Instant">📱 UPI QR / VPA (GPay / PhonePe)</option>
+            <option value="Net Banking / Card">💳 Debit / Credit Card / Net Banking</option>
+          </select>
+        </div>
+
+        <div id="bm-extra-pay-box" class="hidden">
+          <label id="bm-extra-label" class="block text-xs font-bold text-slate-600 uppercase mb-1">UPI ID / VPA</label>
+          <input type="text" id="bm-extra-input" value="jayesh@oksbi" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+        </div>
+
+        <div class="p-4 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-teal-900 uppercase">Total Payable</p>
+            <p id="bm-rate-info" class="text-[11px] text-teal-700">Rate: ₹40/hr × 2 hrs</p>
+          </div>
+          <span id="bm-total-price" class="text-2xl font-extrabold text-teal-700">₹80</span>
+        </div>
+
+        <div class="flex gap-3 pt-1">
+          <button type="submit" class="flex-1 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition">
+            ✓ Pay & Generate QR Pass
+          </button>
+          <button type="button" onclick="closeBookingModal()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: QR ENTRY / EXIT DIGITAL PASS VIEWER -->
+  <div id="qr-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl text-center">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <span class="text-xs font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">ParkPulse Digital QR Pass</span>
+        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <h3 id="qr-modal-slot" class="text-xl font-extrabold text-slate-900 mt-3">Slot A-02</h3>
+      <p id="qr-modal-zone" class="text-xs text-slate-500"></p>
+
+      <!-- Dynamic SVG QR Code Container -->
+      <div id="qr-svg-box" class="w-44 h-44 mx-auto my-4 p-3 rounded-2xl border-2 border-slate-900 bg-white flex items-center justify-center shadow-inner"></div>
+
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1.5 text-left">
+        <div class="flex justify-between"><span class="text-slate-500">Booking ID:</span><strong id="qr-modal-id" class="font-mono text-slate-900"></strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Vehicle Plate:</span><strong id="qr-modal-vehicle" class="font-mono text-teal-700"></strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Gate Entry PIN:</span><strong id="qr-modal-pin" class="font-mono text-rose-600 text-sm"></strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Pass Status:</span><strong id="qr-modal-status" class="text-emerald-700"></strong></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 mt-4">
+        <button onclick="triggerGateFromQrModal('entry')" class="py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700">
+          🟢 Simulate Entry
+        </button>
+        <button onclick="triggerGateFromQrModal('exit')" class="py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700">
+          🔴 Simulate Exit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: RECHARGE FASTAG WALLET -->
+  <div id="topup-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h3 class="text-lg font-bold text-slate-900">💳 Recharge FASTag Parking Wallet</h3>
+        <button onclick="closeTopUpModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+      <form onsubmit="confirmWalletTopUp(event)" class="space-y-4 mt-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Recharge Amount (₹)</label>
+          <input type="number" id="topup-amount" min="100" required value="500" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-base font-extrabold text-emerald-700" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Payment Method</label>
+          <select id="topup-method" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold">
+            <option value="UPI AutoPay (SBI)">📱 UPI Linked Bank Account (GPay / PhonePe)</option>
+            <option value="Net Banking (HDFC)">🏦 Net Banking (IMPS / NEFT)</option>
+            <option value="Debit Card (••4829)">💳 Visa / MasterCard Debit Card</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Bank Account / UPI Reference</label>
+          <input type="text" id="topup-ref" required value="jayesh@oksbi" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700">✓ Verify & Add Funds</button>
+          <button type="button" onclick="closeTopUpModal()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Application State
+    let currentUserRole = 'driver'; // 'driver' or 'admin'
+    let walletBalance = 1450;
+    let totalRevenue = 4820;
+    let selectedSlotForBooking = null;
+    let activeQrModalBookingId = null;
+
+    let profile = {
+      name: 'Jayesh Deshmukh',
+      vehicle: 'MH-31-CB-4829',
+      phone: '+91 98765 43210',
+      email: 'jayesh@college.edu'
+    };
+
+    // 18 Smart Slots across 3 Nagpur Urban Zones
+    let slots = [
+      // Sitabuldi Metro Hub
+      { id: 'A-01', zone: 'Sitabuldi Metro Hub', type: 'Car', rate: 40, status: 'Occupied', vehicle: 'MH-31-AX-1029' },
+      { id: 'A-02', zone: 'Sitabuldi Metro Hub', type: 'Car', rate: 40, status: 'Reserved', vehicle: 'MH-31-CB-4829' },
+      { id: 'A-03', zone: 'Sitabuldi Metro Hub', type: 'Car', rate: 40, status: 'Available', vehicle: null },
+      { id: 'A-04', zone: 'Sitabuldi Metro Hub', type: 'EV', rate: 60, status: 'Available', vehicle: null },
+      { id: 'A-05', zone: 'Sitabuldi Metro Hub', type: 'EV', rate: 60, status: 'Occupied', vehicle: 'MH-49-EV-8821' },
+      { id: 'A-06', zone: 'Sitabuldi Metro Hub', type: 'Bike', rate: 20, status: 'Available', vehicle: null },
+      { id: 'A-07', zone: 'Sitabuldi Metro Hub', type: 'Bike', rate: 20, status: 'Available', vehicle: null },
+      { id: 'A-08', zone: 'Sitabuldi Metro Hub', type: 'Car', rate: 40, status: 'Maintenance', vehicle: null },
+
+      // Dharampeth Plaza
+      { id: 'B-01', zone: 'Dharampeth Plaza', type: 'Car', rate: 50, status: 'Available', vehicle: null },
+      { id: 'B-02', zone: 'Dharampeth Plaza', type: 'Car', rate: 50, status: 'Occupied', vehicle: 'MH-31-ZZ-9012' },
+      { id: 'B-03', zone: 'Dharampeth Plaza', type: 'EV', rate: 60, status: 'Available', vehicle: null },
+      { id: 'B-04', zone: 'Dharampeth Plaza', type: 'Bike', rate: 20, status: 'Available', vehicle: null },
+      { id: 'B-05', zone: 'Dharampeth Plaza', type: 'Car', rate: 50, status: 'Occupied', vehicle: 'MH-40-P-3311' },
+      { id: 'B-06', zone: 'Dharampeth Plaza', type: 'Bike', rate: 20, status: 'Available', vehicle: null },
+
+      // Sadar Smart Lot
+      { id: 'C-01', zone: 'Sadar Smart Lot', type: 'Car', rate: 40, status: 'Available', vehicle: null },
+      { id: 'C-02', zone: 'Sadar Smart Lot', type: 'Car', rate: 40, status: 'Occupied', vehicle: 'MH-31-WK-7741' },
+      { id: 'C-03', zone: 'Sadar Smart Lot', type: 'EV', rate: 60, status: 'Available', vehicle: null },
+      { id: 'C-04', zone: 'Sadar Smart Lot', type: 'Bike', rate: 20, status: 'Available', vehicle: null }
+    ];
+
+    let bookings = [
+      {
+        id: 'PK-9041',
+        slotId: 'A-02',
+        zone: 'Sitabuldi Metro Hub',
+        vehicle: 'MH-31-CB-4829',
+        duration: 2,
+        amount: 80,
+        payMode: 'FASTag Wallet',
+        pin: '4829',
+        status: 'Reserved (Awaiting Entry)',
+        time: 'Today, 10:15 AM'
+      }
+    ];
+
+    let paymentLogs = [
+      { id: 1, title: 'Slot A-02 Reservation (Sitabuldi Metro Hub)', mode: 'FASTag Wallet', amount: '- ₹80', type: 'debit', time: 'Today, 10:15 AM' },
+      { id: 2, title: 'FASTag Wallet Top-Up', mode: 'UPI AutoPay (SBI)', amount: '+ ₹1,000', type: 'credit', time: 'Yesterday, 06:40 PM' }
+    ];
+
+    let gateLogs = [
+      { id: 1, text: 'Vehicle MH-31-AX-1029 Checked-In at Slot A-01', type: 'entry', time: '10:02 AM' },
+      { id: 2, text: 'Vehicle MH-49-EV-8821 Checked-In at EV Bay A-05', type: 'entry', time: '09:45 AM' }
+    ];
+
+    let notifications = [
+      { id: 1, title: '🎟️ QR Pass Generated (PK-9041)', message: 'Slot A-02 at Sitabuldi Metro Hub reserved for MH-31-CB-4829. Gate PIN: 4829.', time: '10 mins ago', unread: true },
+      { id: 2, title: '⚡ EV Fast Charger Available', message: 'Bay A-04 (60kW DC Fast Charger) is currently open for reservation.', time: '1 hour ago', unread: true }
+    ];
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = '✓ ' + msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3800);
+    }
+
+    // Generate deterministic SVG QR Code for any string
+    function generateQrSvg(seedText) {
+      let hash = 0;
+      for (let i = 0; i < seedText.length; i++) {
+        hash = ((hash << 5) - hash) + seedText.charCodeAt(i);
+        hash |= 0;
+      }
+      const size = 9;
+      let rects = '';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const isCorner = (r < 2 && c < 2) || (r < 2 && c >= size - 2) || (r >= size - 2 && c < 2);
+          const bit = Math.abs((hash * (r + 1) * (c + 3)) % 7) < 4;
+          if (isCorner || bit) {
+            rects += `<rect x="${c * 10}" y="${r * 10}" width="9" height="9" rx="1.5" fill="#0f172a" />`;
+          }
+        }
+      }
+      return `<svg viewBox="0 0 90 90" class="w-full h-full">${rects}</svg>`;
+    }
+
+    // Switch Role (Driver vs Admin)
+    function switchRole(role) {
+      currentUserRole = role;
+      document.getElementById('role-btn-driver').className = `px-3 py-1 rounded-lg text-xs font-bold transition ${role === 'driver' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
+      document.getElementById('role-btn-admin').className = `px-3 py-1 rounded-lg text-xs font-bold transition ${role === 'admin' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`;
+
+      renderNavigation();
+      if (role === 'admin') {
+        switchTab('Admin Analytics');
+      } else {
+        switchTab('Live Slot Map');
+      }
+    }
+
+    function renderNavigation() {
+      const nav = document.getElementById('sidebar-nav');
+      const mobileNav = document.getElementById('mobile-nav');
+      const items = [
+        { name: 'Live Slot Map', icon: '🗺️' },
+        { name: 'My Bookings & QR', icon: '🎟️' },
+        { name: 'QR Gate Scanner', icon: '📷' },
+        { name: 'Payments & Wallet', icon: '💳' },
+        { name: 'Admin Analytics', icon: '📊' },
+        { name: 'Notifications', icon: '🔔' },
+        { name: 'My Profile', icon: '👤' }
+      ];
+
+      nav.innerHTML = items.map(i => `
+        <button onclick="switchTab('${i.name}')" id="nav-${i.name}" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm transition text-slate-600 hover:bg-slate-100 flex items-center gap-3">
+          <span>${i.icon}</span>${i.name}
+        </button>
+      `).join('');
+
+      mobileNav.innerHTML = items.map(i => `
+        <button onclick="switchTab('${i.name}')" class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-100 whitespace-nowrap">${i.icon}${i.name}</button>
+      `).join('');
+    }
+
+    function switchTab(tabName) {
+      const tabs = ['Live Slot Map', 'My Bookings & QR', 'QR Gate Scanner', 'Payments & Wallet', 'Admin Analytics', 'Notifications', 'My Profile'];
+      tabs.forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) el.classList.add('hidden');
+        const btn = document.getElementById('nav-' + t);
+        if (btn) btn.className = 'w-full text-left px-4 py-3 rounded-xl font-semibold text-sm transition text-slate-600 hover:bg-slate-100 flex items-center gap-3';
+      });
+
+      const target = document.getElementById('tab-' + tabName);
+      if (target) target.classList.remove('hidden');
+      const activeBtn = document.getElementById('nav-' + tabName);
+      if (activeBtn) activeBtn.className = 'w-full text-left px-4 py-3 rounded-xl font-semibold text-sm transition bg-teal-600 text-white shadow-sm flex items-center gap-3';
+
+      document.getElementById('page-title').innerText = tabName;
+      renderAll();
+    }
+
+    // Render Interactive Parking Slot Grid
+    function renderSlotGrid() {
+      const zone = document.getElementById('zone-select').value;
+      const filter = document.getElementById('type-filter').value;
+      document.getElementById('current-zone-heading').innerText = `${zone} — Live Sensor Bay`;
+
+      const filtered = slots.filter(s => {
+        if (s.zone !== zone) return false;
+        if (filter === 'AvailableOnly') return s.status === 'Available';
+        if (filter === 'Car' || filter === 'EV' || filter === 'Bike') return s.type === filter;
+        return true;
+      });
+
+      const typeIcons = { Car: '🚗 Car', EV: '⚡ EV Bay', Bike: '🛵 Bike' };
+
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = filtered.map(s => {
+        let cardStyle = 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-600 cursor-pointer';
+        let badgeStyle = 'bg-emerald-600 text-white';
+        let actionLabel = `Book • ₹${s.rate}/hr`;
+
+        if (s.status === 'Occupied') {
+          cardStyle = 'bg-rose-50/60 border-rose-200 opacity-85 cursor-not-allowed';
+          badgeStyle = 'bg-rose-600 text-white';
+          actionLabel = s.vehicle || 'Occupied';
+        } else if (s.status === 'Reserved') {
+          cardStyle = 'bg-teal-50 border-teal-400 cursor-pointer';
+          badgeStyle = 'bg-teal-700 text-white';
+          actionLabel = 'View QR Pass';
+        } else if (s.status === 'Maintenance') {
+          cardStyle = 'bg-amber-50/60 border-amber-200 opacity-75 cursor-not-allowed';
+          badgeStyle = 'bg-amber-500 text-white';
+          actionLabel = 'Under Repair';
+        }
+
+        return `
+          <div onclick="handleSlotClick('${s.id}')" class="p-4 rounded-2xl border-2 transition flex flex-col justify-between ${cardStyle}">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-extrabold text-slate-900">${s.id}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeStyle}">${s.status}</span>
+            </div>
+            <div class="my-3 text-center">
+              <p class="text-xs font-bold text-slate-700">${typeIcons[s.type]}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">₹${s.rate}/hr</p>
+            </div>
+            <div class="text-center py-1.5 rounded-xl bg-white/90 border border-slate-200 text-[11px] font-extrabold text-slate-800">
+              ${actionLabel}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleSlotClick(slotId) {
+      const slot = slots.find(s => s.id === slotId);
+      if (!slot) return;
+
+      if (slot.status === 'Available') {
+        openBookingModal(slot);
+      } else if (slot.status === 'Reserved') {
+        const bk = bookings.find(b => b.slotId === slotId && !b.status.includes('Completed'));
+        if (bk) openQrModal(bk.id);
+      } else {
+        showToast(`Slot ${slot.id} is currently${slot.status}. Please select a green Available slot.`);
+      }
+    }
+
+    // Booking Modal & Payment Calculation
+    function openBookingModal(slot) {
+      selectedSlotForBooking = slot;
+      document.getElementById('bm-title').innerText = `Reserve Slot ${slot.id} (${slot.type})`;
+      document.getElementById('bm-subtitle').innerText = `${slot.zone} • Tariff: ₹${slot.rate}/hour`;
+      document.getElementById('bm-vehicle').value = profile.vehicle;
+      document.getElementById('bm-duration').value = '2';
+      updateBookingPricePreview();
+      toggleBookingPayFields();
+      document.getElementById('booking-modal').classList.remove('hidden');
+    }
+
+    function closeBookingModal() {
+      document.getElementById('booking-modal').classList.add('hidden');
+      selectedSlotForBooking = null;
+    }
+
+    function updateBookingPricePreview() {
+      if (!selectedSlotForBooking) return;
+      const hrs = Number(document.getElementById('bm-duration').value);
+      const total = hrs * selectedSlotForBooking.rate;
+      document.getElementById('bm-rate-info').innerText = `Rate: ₹${selectedSlotForBooking.rate}/hr × ${hrs} hr(s)`;
+      document.getElementById('bm-total-price').innerText = `₹${total}`; }  function toggleBookingPayFields() { const mode = document.getElementById('bm-pay-mode').value; const box = document.getElementById('bm-extra-pay-box'); const label = document.getElementById('bm-extra-label'); const input = document.getElementById('bm-extra-input');  if (mode === 'FASTag Wallet') { box.classList.add('hidden'); } else if (mode === 'UPI Instant') { box.classList.remove('hidden'); label.innerText = 'Enter UPI ID / VPA'; input.value = 'jayesh@oksbi'; } else { box.classList.remove('hidden'); label.innerText = 'Card / Account Number'; input.value = '4532-XXXX-XXXX-4829'; } }  function confirmSlotBooking(e) { e.preventDefault(); if (!selectedSlotForBooking) return;  const hrs = Number(document.getElementById('bm-duration').value); const amount = hrs * selectedSlotForBooking.rate; const vehicle = document.getElementById('bm-vehicle').value.trim().toUpperCase(); const payMode = document.getElementById('bm-pay-mode').value;  if (payMode === 'FASTag Wallet' && walletBalance < amount) { alert('Insufficient FASTag Wallet balance! Please recharge your wallet or choose UPI/Card.'); return; }  if (payMode === 'FASTag Wallet') { walletBalance -= amount; } totalRevenue += amount;  // Update Slot Status selectedSlotForBooking.status = 'Reserved'; selectedSlotForBooking.vehicle = vehicle;  const newBooking = { id: 'PK-' + Math.floor(1000 + Math.random() * 9000), slotId: selectedSlotForBooking.id, zone: selectedSlotForBooking.zone, vehicle: vehicle, duration: hrs, amount: amount, payMode: payMode, pin: String(Math.floor(1000 + Math.random() * 9000)), status: 'Reserved (Awaiting Entry)', time: 'Just now' };  bookings.unshift(newBooking);  paymentLogs.unshift({ id: Date.now(), title: `Slot ${newBooking.slotId} Reservation (${newBooking.zone})`, mode: payMode, amount: `- ₹${amount}`,
+        type: 'debit',
+        time: 'Just now'
+      });
+
+      notifications.unshift({
+        id: Date.now() + 1,
+        title: `🎟️ Booking Confirmed (${newBooking.id})`,
+        message: `Slot ${newBooking.slotId} reserved for${vehicle}. Entry PIN: ${newBooking.pin}.`, time: 'Just now', unread: true });  closeBookingModal(); renderAll(); openQrModal(newBooking.id); showToast(`Slot ${newBooking.slotId} booked! QR Entry Pass generated.`);
+    }
+
+    // QR Modal Functions
+    function openQrModal(bookingId) {
+      const bk = bookings.find(b => b.id === bookingId);
+      if (!bk) return;
+      activeQrModalBookingId = bk.id;
+      document.getElementById('qr-modal-slot').innerText = `Slot ${bk.slotId}`;
+      document.getElementById('qr-modal-zone').innerText = bk.zone;
+      document.getElementById('qr-modal-id').innerText = bk.id;
+      document.getElementById('qr-modal-vehicle').innerText = bk.vehicle;
+      document.getElementById('qr-modal-pin').innerText = bk.pin;
+      document.getElementById('qr-modal-status').innerText = bk.status;
+      document.getElementById('qr-svg-box').innerHTML = generateQrSvg(bk.id + bk.vehicle + bk.pin);
+      document.getElementById('qr-modal').classList.remove('hidden');
+    }
+
+    function closeQrModal() {
+      document.getElementById('qr-modal').classList.add('hidden');
+      activeQrModalBookingId = null;
+    }
+
+    function triggerGateFromQrModal(actionType) {
+      if (!activeQrModalBookingId) return;
+      document.getElementById('scanner-manual-input').value = activeQrModalBookingId;
+      closeQrModal();
+      switchTab('QR Gate Scanner');
+      processGateScan(actionType);
+    }
+
+    // QR Gate Scanner Entry / Exit Logic
+    function syncScannerSelection() {
+      const val = document.getElementById('scanner-booking-select').value;
+      document.getElementById('scanner-manual-input').value = val;
+    }
+
+    function processGateScan(scanType) {
+      const query = (document.getElementById('scanner-manual-input').value || document.getElementById('scanner-booking-select').value).trim().toUpperCase();
+      const bk = bookings.find(b => b.id.toUpperCase() === query || b.pin === query || b.slotId.toUpperCase() === query);
+
+      const line1 = document.getElementById('gate-log-line1');
+      const line2 = document.getElementById('gate-log-line2');
+      const badge = document.getElementById('gate-barrier-badge');
+
+      if (!bk) {
+        line1.innerText = `> ERROR: Invalid QR Pass or PIN [${query}]`;
+        line2.innerText = `> ACCESS DENIED — BOOM BARRIER LOCKED`;
+        line2.className = 'text-rose-400 font-bold';
+        showToast('Invalid QR Pass or PIN!');
+        return;
+      }
+
+      const slot = slots.find(s => s.id === bk.slotId);
+
+      if (scanType === 'entry') {
+        bk.status = 'Checked-In (Parked)';
+        if (slot) {
+          slot.status = 'Occupied';
+          slot.vehicle = bk.vehicle;
+        }
+        badge.innerText = 'BARRIER: OPEN (ENTRY)';
+        badge.className = 'bg-emerald-600 text-white px-2 py-0.5 rounded font-bold';
+        line1.innerText = `> QR VERIFIED: ${bk.id} | Vehicle: ${bk.vehicle} \vert{} Slot:${bk.slotId}`;
+        line2.innerText = `> WELCOME! ENTRY BARRIER OPENED AT ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`; line2.className = 'text-emerald-400 font-bold';  gateLogs.unshift({ id: Date.now(), text: `ENTRY: ${bk.vehicle} checked into Slot ${bk.slotId} (${bk.id})`,
+          type: 'entry',
+          time: 'Just now'
+        });
+        showToast(`Entry Verified! Vehicle ${bk.vehicle} parked in Slot${bk.slotId}.`);
+      } else {
+        bk.status = 'Completed (Checked-Out)';
+        if (slot) {
+          slot.status = 'Available';
+          slot.vehicle = null;
+        }
+        badge.innerText = 'BARRIER: OPEN (EXIT)';
+        badge.className = 'bg-teal-600 text-white px-2 py-0.5 rounded font-bold';
+        line1.innerText = `> EXIT VERIFIED: ${bk.id} \vert{} Slot${bk.slotId} Released to Available`;
+        line2.innerText = `> THANK YOU! EXIT BARRIER OPENED — SLOT ${bk.slotId} NOW FREE`;
+        line2.className = 'text-teal-300 font-bold';
+
+        gateLogs.unshift({
+          id: Date.now(),
+          text: `EXIT: ${bk.vehicle} departed. Slot ${bk.slotId} is now Available.`,
+          type: 'exit',
+          time: 'Just now'
+        });
+        showToast(`Exit Verified! Slot ${bk.slotId} is now Available on the live map.`);
+      }
+
+      renderAll();
+    }
+
+    // Cancel Booking
+    function cancelBooking(bookingId) {
+      const bk = bookings.find(b => b.id === bookingId);
+      if (!bk) return;
+      const slot = slots.find(s => s.id === bk.slotId);
+      if (slot) {
+        slot.status = 'Available';
+        slot.vehicle = null;
+      }
+      walletBalance += bk.amount;
+      bk.status = 'Cancelled (Refunded)';
+
+      paymentLogs.unshift({
+        id: Date.now(),
+        title: `Refund: Cancelled Booking ${bk.id} (Slot${bk.slotId})`,
+        mode: 'FASTag Wallet Refund',
+        amount: `+ ₹${bk.amount}`, type: 'credit', time: 'Just now' });  renderAll(); showToast(`Booking ${bk.id} cancelled and ₹${bk.amount} refunded to wallet!`);
+    }
+
+    // Wallet Top-Up Modal
+    function openTopUpModal(amount) {
+      document.getElementById('topup-amount').value = amount || 500;
+      document.getElementById('topup-modal').classList.remove('hidden');
+    }
+    function closeTopUpModal() {
+      document.getElementById('topup-modal').classList.add('hidden');
+    }
+    function confirmWalletTopUp(e) {
+      e.preventDefault();
+      const amt = Number(document.getElementById('topup-amount').value);
+      const method = document.getElementById('topup-method').value;
+      walletBalance += amt;
+
+      paymentLogs.unshift({
+        id: Date.now(),
+        title: 'FASTag Wallet Recharge',
+        mode: method,
+        amount: `+ ₹${amt}`, type: 'credit', time: 'Just now' });  closeTopUpModal(); renderAll(); showToast(`₹${amt} added to your FASTag Wallet!`);
+    }
+
+    // Admin Functions
+    function adminChangeSlotStatus(slotId, newStatus) {
+      const s = slots.find(item => item.id === slotId);
+      if (!s) return;
+      s.status = newStatus;
+      s.vehicle = newStatus === 'Occupied' ? 'MH-31-ADM-99' : null;
+      renderAll();
+      showToast(`Admin updated Slot ${slotId} to${newStatus}`);
+    }
+
+    function adminAddSlot(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-slot-code').value.trim().toUpperCase();
+      const zone = document.getElementById('new-slot-zone').value;
+      const type = document.getElementById('new-slot-type').value;
+      const rate = Number(document.getElementById('new-slot-rate').value);
+
+      if (slots.some(s => s.id === code)) {
+        alert('Slot ID already exists! Choose a unique code.');
+        return;
+      }
+
+      slots.push({
+        id: code,
+        zone: zone,
+        type: type,
+        rate: rate,
+        status: 'Available',
+        vehicle: null
+      });
+
+      document.getElementById('new-slot-code').value = '';
+      renderAll();
+      showToast(`New sensor slot ${code} deployed in ${zone}!`); }  function markAllNotificationsRead() { notifications.forEach(n => n.unread = false); renderAll(); }  // Profile Functions function getInitials(name) { return name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) \vert{}\vert{} 'PP'; }  function toggleProfileEdit(editing) { document.getElementById('profile-view-mode').classList.toggle('hidden', editing); document.getElementById('profile-edit-mode').classList.toggle('hidden', !editing); document.getElementById('edit-profile-btn').classList.toggle('hidden', editing); if (editing) { document.getElementById('pe-name').value = profile.name; document.getElementById('pe-vehicle').value = profile.vehicle; document.getElementById('pe-phone').value = profile.phone; document.getElementById('pe-email').value = profile.email; } }  function saveProfile(e) { e.preventDefault(); profile.name = document.getElementById('pe-name').value.trim(); profile.vehicle = document.getElementById('pe-vehicle').value.trim().toUpperCase(); profile.phone = document.getElementById('pe-phone').value.trim(); profile.email = document.getElementById('pe-email').value.trim(); toggleProfileEdit(false); renderAll(); showToast('Driver profile updated successfully!'); }  // Master Render function renderAll() { const availCount = slots.filter(s => s.status === 'Available').length; const occCount = slots.filter(s => s.status === 'Occupied' \vert{}\vert{} s.status === 'Reserved').length; const activeBookings = bookings.filter(b => !b.status.includes('Completed') && !b.status.includes('Cancelled'));  document.getElementById('stat-available').innerText = availCount; document.getElementById('stat-occupied').innerText = occCount; document.getElementById('stat-my-bookings').innerText = activeBookings.length; document.getElementById('stat-wallet').innerText = `₹${walletBalance.toLocaleString('en-IN')}`;
+      document.getElementById('header-wallet').innerText = `₹${walletBalance.toLocaleString('en-IN')}`; document.getElementById('wallet-main-balance').innerText = `₹${walletBalance.toLocaleString('en-IN')}`;
+
+      // Profile & Header
+      const initials = getInitials(profile.name);
+      document.getElementById('header-initials').innerText = initials;
+      document.getElementById('profile-avatar').innerText = initials;
+      document.getElementById('header-name').innerText = profile.name;
+      document.getElementById('header-vehicle').innerText = profile.vehicle;
+      document.getElementById('wallet-vehicle').innerText = profile.vehicle;
+      document.getElementById('profile-display-name').innerText = profile.name;
+      document.getElementById('profile-display-sub').innerText = `Verified Driver • Vehicle: ${profile.vehicle}`;
+      document.getElementById('pv-name').innerText = profile.name;
+      document.getElementById('pv-vehicle').innerText = profile.vehicle;
+      document.getElementById('pv-phone').innerText = profile.phone;
+      document.getElementById('pv-email').innerText = profile.email;
+
+      // Render Interactive Slot Map
+      renderSlotGrid();
+
+      // Render Bookings & QR Passes
+      document.getElementById('bookings-list').innerHTML = bookings.map(b => {
+        const isDone = b.status.includes('Completed') || b.status.includes('Cancelled');
+        return `
+          <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <span class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-teal-600 text-white">${b.id} • Slot ${b.slotId}</span>
+                <h3 class="text-base font-bold text-slate-900 mt-2">${b.zone}</h3>
+                <p class="text-xs text-slate-500 mt-1">🚗 Vehicle: <strong class="font-mono text-slate-800">${b.vehicle}</strong> • ⏱️ ${b.duration} hr(s)</p>
+                <p class="text-xs text-slate-500 mt-0.5">🔑 Gate PIN: <strong class="text-rose-600 font-mono">${b.pin}</strong> • Paid: ₹${b.amount} (${b.payMode})</p>
+                <span class="inline-block mt-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${isDone ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">
+                  ${b.status}
+                </span>
+              </div>
+              <div onclick="openQrModal('${b.id}')" class="w-20 h-20 p-1.5 bg-white rounded-xl border border-slate-300 cursor-pointer flex-shrink-0" title="Click to enlarge QR">
+                ${generateQrSvg(b.id + b.vehicle + b.pin)}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+              <button onclick="openQrModal('${b.id}')" class="flex-1 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700">
+                📷 Open QR Pass & Scanner
+              </button>
+              ${!isDone ? `<button onclick="cancelBooking('${b.id}')" class="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold hover:bg-rose-100">Cancel & Refund</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Populate QR Gate Scanner Dropdown
+      const scannerSelect = document.getElementById('scanner-booking-select');
+      scannerSelect.innerHTML = bookings.map(b => `
+        <option value="${b.id}">${b.id} — Slot${b.slotId} (${b.vehicle}) [${b.status}]</option>
+      `).join('');
+
+      // Gate Logs
+      document.getElementById('gate-logs-list').innerHTML = gateLogs.slice(0, 5).map(g => `
+        <div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+          <span class="font-medium text-slate-700">${g.text}</span>
+          <span class="text-[11px] text-slate-400 whitespace-nowrap ml-2">${g.time}</span>
+        </div>
+      `).join('');
+
+      // Payment History
+      document.getElementById('payment-history-list').innerHTML = paymentLogs.map(p => `
+        <div class="p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">${p.title}</p>
+            <p class="text-xs text-slate-500">${p.mode} •${p.time}</p>
+          </div>
+          <span class="text-sm font-extrabold ${p.type === 'credit' ? 'text-emerald-600' : 'text-rose-600'}">${p.amount}</span>
+        </div>
+      `).join('');
+
+      // Admin Analytics KPIs & Zone Bars
+      const occupancyPct = Math.round((occCount / slots.length) * 100);
+      document.getElementById('admin-revenue').innerText = `₹${totalRevenue.toLocaleString('en-IN')}`; document.getElementById('admin-occupancy').innerText = `${occupancyPct}%`;
+      document.getElementById('admin-total-slots').innerText = slots.length;
+      document.getElementById('admin-ev-count').innerText = slots.filter(s => s.type === 'EV').length;
+
+      const zones = ['Sitabuldi Metro Hub', 'Dharampeth Plaza', 'Sadar Smart Lot'];
+      document.getElementById('admin-zone-bars').innerHTML = zones.map(z => {
+        const zSlots = slots.filter(s => s.zone === z);
+        const zOcc = zSlots.filter(s => s.status === 'Occupied' || s.status === 'Reserved').length;
+        const pct = zSlots.length ? Math.round((zOcc / zSlots.length) * 100) : 0;
+        return `
+          <div>
+            <div class="flex justify-between text-xs font-bold mb-1">
+              <span class="text-slate-800">${z}</span>
+              <span class="text-teal-700">${zOcc} / ${zSlots.length} Occupied (${pct}%)</span>
+            </div>
+            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div class="h-full bg-teal-600 transition-all" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Admin Slot Override Table
+      document.getElementById('admin-slots-tbody').innerHTML = slots.map(s => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-3 px-4"><p class="font-bold text-slate-900">${s.id}</p><p class="text-xs text-slate-400">${s.zone}</p></td>
+          <td class="py-3 px-4 text-xs font-semibold">${s.type} (₹${s.rate}/hr)</td>
+          <td class="py-3 px-4 font-mono text-xs text-slate-700">${s.vehicle || '—'}</td>
+          <td class="py-3 px-4">
+            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${ s.status === 'Available' ? 'bg-emerald-100 text-emerald-800' : s.status === 'Occupied' ? 'bg-rose-100 text-rose-800' : s.status === 'Reserved' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800' }">${s.status}</span>
+          </td>
+          <td class="py-3 px-4">
+            <select onchange="adminChangeSlotStatus('${s.id}', this.value)" class="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-bold bg-white">
+              <option value="Available" ${s.status === 'Available' ? 'selected' : ''}>Set Available</option>
+              <option value="Occupied" ${s.status === 'Occupied' ? 'selected' : ''}>Set Occupied</option>
+              <option value="Maintenance" ${s.status === 'Maintenance' ? 'selected' : ''}>Set Maintenance</option>
+            </select>
+          </td>
+        </tr>
+      `).join('');
+
+      // Notifications
+      const unread = notifications.filter(n => n.unread).length;
+      const badge = document.getElementById('notif-badge');
+      badge.innerText = unread;
+      badge.classList.toggle('hidden', unread === 0);
+
+      document.getElementById('notifications-list').innerHTML = notifications.map(n => `
+        <div class="p-4 rounded-xl border flex items-start justify-between gap-4 ${n.unread ? 'bg-teal-50/60 border-teal-200' : 'bg-white border-slate-200'}">
+          <div>
+            <p class="text-sm font-bold text-slate-900">${n.title}</p>
+            <p class="text-xs text-slate
